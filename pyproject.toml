@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ff20-tools"
+version = "1.0.0"
+description = "Native CLI and GUI tools for the Flamma FF20 looper pedal"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "ff20-tools contributors"}
+]
+dependencies = [
+  "hid>=1.0.7"
+]
+
+[project.optional-dependencies]
+gui = [
+  "PySide6>=6.7"
+]
+dev = [
+  "pytest>=8"
+]
+
+[project.scripts]
+ff20 = "ff20.cli:main"
+ff20-gui = "ff20.gui.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ff20*"]
