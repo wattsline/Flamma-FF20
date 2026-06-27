@@ -8,9 +8,11 @@ The official Flamma FF20 desktop app is an Intel Electron app on macOS and requi
 <p align="center">
   <img src="./Resources/Flamma FF20.png" alt="Flamma FF20 Looper + Drums" width="300" height="245">
 </p>
+<p align="center">
+  <img src="./Resources/FF20 Tools Screenshot.png" alt="Flamma FF20 Looper + Drums" width="700" height="519">
+</p>
 
-
-## Status: v1.0.0
+## Status: v1.0.1
 
 Validated features:
 
