@@ -2,7 +2,7 @@
 
 Native, cross-platform tools for the Flamma FF20 looper pedal.
 
-The official Flamma FF20 desktop app is an Intel Electron app on macOS and requires Rosetta on Apple Silicon. `ff20-tools` provides a native Python implementation of the FF20 USB/HID protocol with a CLI and PySide6 GUI.
+The official Flamma FF20 desktop app is an Intel Electron app for macOS, but it requires Rosetta on Apple Silicon, which will **soon be removed from macOS.** `FF20 Tools` offers a native Python implementation of the FF20 USB/HID protocol, complete with a command-line interface (CLI) and PySide6 GUI, making it **compatible with both Intel and Apple Silicon platforms.**
 
 
 <p align="center">
@@ -105,9 +105,11 @@ ff20-gui
 
 This removes the local virtual environment only. It does not uninstall Homebrew, Python, hidapi, or ffmpeg.
 
+
 ## Important note about pedal behavior
 
 A loop recorded on the pedal must be **saved on the pedal** before it becomes exportable through USB.
+
 
 ## Normalization presets
 
