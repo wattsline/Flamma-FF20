@@ -27,6 +27,7 @@ Validated features:
 - Backup selected loops with manifest
 - Polished Qt GUI with friendly unplugged-pedal messages
 - macOS installer/update/uninstall helper scripts
+- "One Click" Launcher icon in ~/Applications
 
 ## Requirements
 
@@ -104,7 +105,7 @@ ff20-gui
 
 This removes the local virtual environment only. It does not uninstall Homebrew, Python, hidapi, or ffmpeg.
 
-## Important pedal behavior
+## Important note about pedal behavior
 
 A loop recorded on the pedal must be **saved on the pedal** before it becomes exportable through USB.
 
