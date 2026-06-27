@@ -6,7 +6,7 @@ import traceback
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QPixmap
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ff20.exceptions import FF20Error
+from ff20.exceptions import DeviceNotFoundError, FF20Error
 from ff20.pedal import FF20Pedal, LoopInfo
 
 
@@ -39,17 +39,9 @@ STATUS_STYLES = {
 }
 
 
-def project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def app_icon_path() -> Path:
-    return project_root() / "Resources" / "FF20.icns"
-
-
 class WorkerSignals(QObject):
     success = Signal(object)
-    error = Signal(str, bool)
+    error = Signal(str, bool)  # message, user_friendly
     progress = Signal(int)
     status = Signal(str)
     finished = Signal(object)
@@ -89,10 +81,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("FF20 Tools")
         self.resize(1100, 720)
 
-        icon_path = app_icon_path()
-        if icon_path.exists():
-            self.setWindowIcon(QIcon(str(icon_path)))
-
         self.thread_pool = QThreadPool.globalInstance()
         self._workers: list[Worker] = []
         self.loops: list[LoopInfo] = []
@@ -102,16 +90,6 @@ class MainWindow(QMainWindow):
         self.selection_label = QLabel("No selection")
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
-
-        self.logo = QLabel()
-        self.logo.setMinimumWidth(180)
-        self.logo.setAlignment(Qt.AlignCenter)
-        if icon_path.exists():
-            pix = QPixmap(str(icon_path))
-            if not pix.isNull():
-                self.logo.setPixmap(
-                    pix.scaled(140, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                )
 
         self.slot_count = QSpinBox()
         self.slot_count.setRange(1, 100)
@@ -148,31 +126,21 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._install_shortcuts()
 
-        self.set_connection_state(
-            "none",
-            "⚪ No Pedal Detected",
-            "Connect your FF20 via USB-C, then click Refresh Connection.",
-        )
+        self.set_connection_state("none", "⚪ No Pedal Detected", "Connect your FF20 via USB-C, then click Refresh Connection.")
         QTimer.singleShot(250, self.connect_device)
 
     def _build_layout(self):
         connection_box = QGroupBox("Connection")
-
-        connection_left = QVBoxLayout()
-        connection_left.addWidget(self.status)
-        connection_left.addWidget(self.status_detail)
+        connection_layout = QVBoxLayout()
+        connection_layout.addWidget(self.status)
+        connection_layout.addWidget(self.status_detail)
 
         connection_controls = QHBoxLayout()
         connection_controls.addWidget(self.btn_connect)
         connection_controls.addWidget(self.btn_refresh)
         connection_controls.addWidget(self.slot_count)
         connection_controls.addStretch(1)
-        connection_left.addLayout(connection_controls)
-
-        connection_layout = QHBoxLayout()
-        connection_layout.addLayout(connection_left, stretch=1)
-        connection_layout.addStretch(1)
-        connection_layout.addWidget(self.logo)
+        connection_layout.addLayout(connection_controls)
         connection_box.setLayout(connection_layout)
 
         pedal_box = QGroupBox("Pedal Actions")
@@ -244,18 +212,10 @@ class MainWindow(QMainWindow):
 
     def set_busy(self, busy: bool, text: str | None = None):
         controls = [
-            self.btn_connect,
-            self.btn_refresh,
-            self.btn_export,
-            self.btn_import,
-            self.btn_delete,
-            self.btn_backup,
-            self.btn_select_all,
-            self.btn_select_present,
-            self.btn_clear_selection,
-            self.slot_count,
-            self.normalize_import,
-            self.normalize_preset,
+            self.btn_connect, self.btn_refresh, self.btn_export, self.btn_import,
+            self.btn_delete, self.btn_backup, self.btn_select_all,
+            self.btn_select_present, self.btn_clear_selection, self.slot_count,
+            self.normalize_import, self.normalize_preset,
         ]
         for c in controls:
             c.setEnabled(not busy)
@@ -292,10 +252,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Unexpected Error", msg)
 
     def selected_slots(self) -> list[int]:
-        return sorted(
-            int(self.table.item(r.row(), 1).text())
-            for r in self.table.selectionModel().selectedRows()
-        )
+        return sorted(int(self.table.item(r.row(), 1).text()) for r in self.table.selectionModel().selectedRows())
 
     def selected_present_slots(self) -> list[int]:
         return [s for s in self.selected_slots() if 0 <= s < len(self.loops) and self.loops[s].present]
@@ -316,9 +273,7 @@ class MainWindow(QMainWindow):
         text = ", ".join(str(s) for s in slots[:20])
         if len(slots) > 20:
             text += "..."
-        self.selection_label.setText(
-            f"Selected {len(slots)} slot(s): {text} | present={len(present)} empty={len(slots)-len(present)}"
-        )
+        self.selection_label.setText(f"Selected {len(slots)} slot(s): {text} | present={len(present)} empty={len(slots)-len(present)}")
 
     def select_present(self):
         self.table.clearSelection()
@@ -365,6 +320,7 @@ class MainWindow(QMainWindow):
             size = str(item.data_length) if item.present else ""
             minutes = f"{item.minutes:.2f}" if item.present else ""
             flags = f"status={item.status_flag} export={item.export_flag}" if item.present else "Empty"
+
             values = [filled, slot_label, size, minutes, flags]
             for col, value in enumerate(values):
                 cell = QTableWidgetItem(value)
@@ -385,9 +341,7 @@ class MainWindow(QMainWindow):
             return
 
         if len(slots) == 1:
-            path, _ = QFileDialog.getSaveFileName(
-                self, "Export WAV", f"FF20_LOOPFILE_{slots[0]:02d}.wav", "WAV files (*.wav)"
-            )
+            path, _ = QFileDialog.getSaveFileName(self, "Export WAV", f"FF20_LOOPFILE_{slots[0]:02d}.wav", "WAV files (*.wav)")
             if not path:
                 return
 
@@ -417,12 +371,7 @@ class MainWindow(QMainWindow):
             return exported
 
         self.set_busy(True, f"Exporting {len(slots)} slots...")
-        self.run_worker(
-            work,
-            lambda exported: QMessageBox.information(
-                self, "Export complete", f"Exported {len(exported)} files to:\n{dest}"
-            ),
-        )
+        self.run_worker(work, lambda exported: QMessageBox.information(self, "Export complete", f"Exported {len(exported)} files to:\n{dest}"))
 
     def import_selected(self):
         slots = self.require_selection()
@@ -438,11 +387,7 @@ class MainWindow(QMainWindow):
         if not paths:
             return
         if len(paths) != len(slots):
-            QMessageBox.warning(
-                self,
-                "Import mismatch",
-                f"Selected {len(slots)} slot(s), but chose {len(paths)} file(s).",
-            )
+            QMessageBox.warning(self, "Import mismatch", f"Selected {len(slots)} slot(s), but chose {len(paths)} file(s).")
             return
 
         occupied = [s for s in slots if 0 <= s < len(self.loops) and self.loops[s].present]
@@ -476,13 +421,7 @@ class MainWindow(QMainWindow):
             return imported
 
         self.set_busy(True, f"Importing {len(slots)} file(s)...")
-        self.run_worker(
-            work,
-            lambda imported: (
-                QMessageBox.information(self, "Import complete", f"Imported {len(imported)} file(s)."),
-                self.refresh_slots(),
-            ),
-        )
+        self.run_worker(work, lambda imported: (QMessageBox.information(self, "Import complete", f"Imported {len(imported)} file(s)."), self.refresh_slots()))
 
     def delete_selected(self):
         slots = self.require_selection()
@@ -491,9 +430,7 @@ class MainWindow(QMainWindow):
         answer = QMessageBox.question(
             self,
             "Delete selected loops?",
-            f"Delete {len(slots)} selected slot(s)?\n\n"
-            f"{', '.join(str(s) for s in slots[:40])}"
-            f"{'...' if len(slots) > 40 else ''}",
+            f"Delete {len(slots)} selected slot(s)?\n\n{', '.join(str(s) for s in slots[:40])}{'...' if len(slots) > 40 else ''}",
         )
         if answer != QMessageBox.Yes:
             return
@@ -509,13 +446,7 @@ class MainWindow(QMainWindow):
             return deleted
 
         self.set_busy(True, f"Deleting {len(slots)} slot(s)...")
-        self.run_worker(
-            work,
-            lambda deleted: (
-                QMessageBox.information(self, "Delete complete", f"Deleted {len(deleted)} slot(s)."),
-                self.refresh_slots(),
-            ),
-        )
+        self.run_worker(work, lambda deleted: (QMessageBox.information(self, "Delete complete", f"Deleted {len(deleted)} slot(s)."), self.refresh_slots()))
 
     def backup_selected(self):
         slots = self.selected_present_slots()
@@ -538,27 +469,17 @@ class MainWindow(QMainWindow):
                     pedal.export_wav(slot, out)
                     exported.append(out)
                     loop = self.loops[slot] if 0 <= slot < len(self.loops) else None
-                    manifest["loops"].append(
-                        {"slot": slot, "file": out.name, "bytes": loop.data_length if loop else None}
-                    )
+                    manifest["loops"].append({"slot": slot, "file": out.name, "bytes": loop.data_length if loop else None})
                     progress(int((i + 1) / len(slots) * 100))
             (dest / "manifest.json").write_text(json.dumps(manifest, indent=2))
             return exported
 
         self.set_busy(True, f"Backing up {len(slots)} slot(s)...")
-        self.run_worker(
-            work,
-            lambda exported: QMessageBox.information(
-                self, "Backup complete", f"Backed up {len(exported)} file(s) to:\n{dest}"
-            ),
-        )
+        self.run_worker(work, lambda exported: QMessageBox.information(self, "Backup complete", f"Backed up {len(exported)} file(s) to:\n{dest}"))
 
 
 def main() -> None:
     app = QApplication(sys.argv)
-    icon_path = app_icon_path()
-    if icon_path.exists():
-        app.setWindowIcon(QIcon(str(icon_path)))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

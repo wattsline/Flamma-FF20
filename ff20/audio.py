@@ -8,6 +8,10 @@ from pathlib import Path
 
 from .constants import CHANNELS, SAMPLE_RATE
 
+import shutil
+from .exceptions import FF20Error
+
+from .system import find_ffmpeg
 
 @dataclass(frozen=True)
 class LoudnessPreset:
@@ -24,9 +28,29 @@ LOUDNESS_PRESETS = {
 }
 
 
-def run_ffmpeg(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True)
+def find_ffmpeg() -> str:
+    candidates = [
+        shutil.which("ffmpeg"),
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+    ]
 
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+
+    raise FF20Error(
+        "ffmpeg was not found.\n\n"
+        "Install it with:\n"
+        "  brew install ffmpeg\n\n"
+        "Then restart FF20 Native."
+    )
+
+
+def run_ffmpeg(cmd: list[str]) -> None:
+    cmd = list(cmd)
+    cmd[0] = find_ffmpeg()
+    subprocess.run(cmd, check=True)
 
 def analyze_loudness(input_path: Path) -> dict:
     cmd = [

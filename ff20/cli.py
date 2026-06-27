@@ -127,7 +127,7 @@ def _check_program(name: str) -> tuple[bool, str]:
 
 
 def cmd_doctor(args) -> None:
-    print("FF20 Native Doctor")
+    print("FF20 Tools Doctor")
     print("==================")
     print()
     print("Python")
