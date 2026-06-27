@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ff20-tools"
-version = "1.0.0"
+version = "1.0.1"
 description = "Native CLI and GUI tools for the Flamma FF20 looper pedal"
 readme = "README.md"
 requires-python = ">=3.10"
