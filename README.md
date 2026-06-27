@@ -35,7 +35,7 @@ For macOS:
 
 - Apple Silicon or Intel Mac
 - Python 3.10+
-- Xcode Command Line Tools
+- Xcode Command Line Tools (Homebrew pre-req)
 - Homebrew
 - `hidapi`
 - `ffmpeg`
